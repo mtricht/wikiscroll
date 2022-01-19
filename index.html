@@ -1,0 +1,219 @@
+<!doctype html><html lang=en>
+<head>
+  <meta charset=utf-8>
+  <meta name=viewport content="width=device-width,initial-scale=1">
+  <meta name=author content="Michael van Tricht">
+  <meta name=description content="Scroll through Wikipedia indefinitely in your native language">
+  <title>WikiScroll</title>
+  <style type="text/css">
+    @media (prefers-color-scheme: light) {
+      :root {
+        --primary-color: #3d3d3d;
+        --secondary-color: #f9f9f9;
+        --bg-color: #fff;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #f2f2f2;
+        --secondary-color: #575757;
+        --bg-color: #3d3d3d;
+      }
+    }
+
+    body {
+      font-family: sans-serif;
+      max-width: 960px;
+      margin: 0 auto;
+      color: var(--primary-color);
+      background-color: var(--bg-color);
+    }
+
+    a {
+      text-decoration: none;
+      color: #00ACE6;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    #content a {
+      color: var(--primary-color);
+    }
+
+    #header {
+      text-align: center;
+    }
+
+    article {
+        display: flex;
+        border: 1px solid var(--primary-color);
+        background-color: var(--secondary-color);
+        padding: 1em;
+        margin: 1em;
+        align-items: center;
+    }
+
+    article img {
+      margin: 1em;
+      max-width: 125px;
+      border: 1px solid var(--primary-color);
+      display: flex;
+      align-self: flex-start;
+    }
+
+    .page-load-status {
+      display: none;
+      padding-top: 20px;
+      border-top: 1px solid var(--primary-color);
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    /** Loader **/
+
+    .loader-ellips {
+      font-size: 20px;
+      position: relative;
+      width: 4em;
+      height: 1em;
+      margin: 10px auto;
+    }
+
+    .loader-ellips__dot {
+      display: block;
+      width: 1em;
+      height: 1em;
+      border-radius: 0.5em;
+      background: var(--primary-color);
+      position: absolute;
+      animation-duration: 0.5s;
+      animation-timing-function: ease;
+      animation-iteration-count: infinite;
+    }
+
+    .loader-ellips__dot:nth-child(1),
+    .loader-ellips__dot:nth-child(2) {
+      left: 0;
+    }
+    .loader-ellips__dot:nth-child(3) { left: 1.5em; }
+    .loader-ellips__dot:nth-child(4) { left: 3em; }
+
+    @keyframes reveal {
+      from { transform: scale(0.001); }
+      to { transform: scale(1); }
+    }
+
+    @keyframes slide {
+      to { transform: translateX(1.5em) }
+    }
+
+    .loader-ellips__dot:nth-child(1) {
+      animation-name: reveal;
+    }
+
+    .loader-ellips__dot:nth-child(2),
+    .loader-ellips__dot:nth-child(3) {
+      animation-name: slide;
+    }
+
+    .loader-ellips__dot:nth-child(4) {
+      animation-name: reveal;
+      animation-direction: reverse;
+    }
+  </style>
+</head>
+<body>
+  <div id=container>
+    <div id=header>
+      <h1>WikiScroll</h1>
+      <p>Scroll through Wikipedia indefinitely in your native language</p>
+      <select>
+        <option value="ar">العربية</option>
+        <option value="arz">مصرى</option>
+        <option value="ceb">Cebuano</option>
+        <option value="de">Deutsch</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fa">فارسی</option>
+        <option value="fr">Français</option>
+        <option value="he">עִברִית</option>
+        <option value="it">Italiano</option>
+        <option value="ja">日本語</option>
+        <option value="nl">Nederlands</option>
+        <option value="pl">Polskie</option>
+        <option value="pt">Português</option>
+        <option value="ru">Русский</option>
+        <option value="sv">Svenska</option>
+        <option value="uk">Українська</option>
+        <option value="vi">Tiếng Việt</option>
+        <option value="war">Winaray</option>
+        <option value="zh">中文</option>
+      </select>
+      <p><small>Is your language missing? <a href="https://github.com/mtricht/wikiscroll">Add it on github!</a></small></p>
+    </div>
+    <div id=content>
+    </div>
+    <div class="page-load-status">
+      <div class="loader-ellips infinite-scroll-request">
+        <span class="loader-ellips__dot"></span>
+        <span class="loader-ellips__dot"></span>
+        <span class="loader-ellips__dot"></span>
+        <span class="loader-ellips__dot"></span>
+      </div>
+      <p class="infinite-scroll-last">End of content</p>
+      <p class="infinite-scroll-error">No more pages to load</p>
+    </div>
+  </div>
+  <script src="https://unpkg.com/infinite-scroll@4/dist/infinite-scroll.pkgd.min.js"></script>
+  <script type="text/javascript">
+    (function() {
+      if (localStorage.hasOwnProperty('language')) {
+        document.querySelector('select').value = localStorage.getItem('language');
+      } else {
+        var userLanguage = (navigator.language || navigator.userLanguage).substr(0, 2);
+        if (document.querySelector('option[value=' + userLanguage + ']') == null) {
+          userLanguage = 'en';
+        }
+        document.querySelector('select').value = userLanguage;
+        localStorage.setItem('language', userLanguage);
+      }
+      var content = document.querySelector('#content');
+      var grncontinue = '';
+      var normalContinue = '';
+      var infiniteScroll = new InfiniteScroll(content, {
+          history: false,
+          path: function() {
+            var language = document.querySelector('select').value;
+            return 'https://' + language + '.wikipedia.org/w/api.php?format=json&formatversion=2&action=query&generator=random&grnnamespace=0&grnlimit=10&prop=extracts|pageimages|info&exintro=1&explaintext=1&origin=*&inprop=url&pithumbsize=125'
+              + (grncontinue != '' ? '&grncontinue=' + grncontinue + '&continue=' + normalContinue : '');
+          },
+          responseBody: 'json',
+          status: '.page-load-status',
+      });
+      var div = document.createElement('div');
+      infiniteScroll.on('load', function(data) {
+        grncontinue = data.continue.grncontinue;
+        normalContinue = data.continue.continue;
+        var html = data.query.pages.map(article => {
+          return '<a href="' + article.fullurl + '"><article>'
+            + (article.thumbnail ? '<img src="' + article.thumbnail.source + '">' : '')
+            + '<div><h2>' + article.title + '</h2>'
+            + '<p>' + article.extract + '</p></div>'
+            + '</article></a>';
+        });
+        div.innerHTML = html.join('');
+        content.append(...div.children);
+      });
+      infiniteScroll.loadNextPage();
+      document.querySelector('select').onchange = function() {
+        content.innerHTML = '';
+        infiniteScroll.loadNextPage();
+        localStorage.setItem('language', this.value);
+      }
+    })();
+  </script>
+</body>
+</html>
